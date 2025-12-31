@@ -1,0 +1,107 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import {
+    Home, LogOut, User, Key, ChevronDown,
+    ArrowLeftRight, Settings
+} from 'lucide-react';
+import { getInitials, getRoleLabel } from '../utils/validators';
+
+const Header = ({ title }) => {
+    const navigate = useNavigate();
+    const { currentUser, currentRole, logout } = useAuth();
+    const { getSocietyById } = useData();
+
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    const society = currentRole?.societyId ? getSocietyById(currentRole.societyId) : null;
+    const approvedRoles = currentUser?.roles?.filter(r => r.status === 'approved') || [];
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
+    const handleSwitchRole = () => {
+        navigate('/select-role');
+        setShowDropdown(false);
+    };
+
+    return (
+        <header className="header">
+            <div className="header-left">
+                <h1 className="header-title">{title}</h1>
+                {society && (
+                    <span className="badge badge-active">{society.name}</span>
+                )}
+            </div>
+
+            <div className="header-right">
+                <div className="dropdown">
+                    <button
+                        className="header-user"
+                        onClick={() => setShowDropdown(!showDropdown)}
+                    >
+                        <div className="header-avatar">
+                            {getInitials(currentUser?.name)}
+                        </div>
+                        <div className="header-user-info">
+                            <div className="header-user-name">{currentUser?.name}</div>
+                            <div className="header-user-role">
+                                {getRoleLabel(currentRole?.role)}
+                            </div>
+                        </div>
+                        <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
+                    </button>
+
+                    {showDropdown && (
+                        <>
+                            <div
+                                style={{
+                                    position: 'fixed',
+                                    inset: 0,
+                                    zIndex: 99
+                                }}
+                                onClick={() => setShowDropdown(false)}
+                            />
+                            <div className="dropdown-menu">
+                                <button className="dropdown-item" onClick={() => {
+                                    setShowDropdown(false);
+                                    // Profile would go here
+                                }}>
+                                    <User size={18} />
+                                    Profile
+                                </button>
+
+                                <button className="dropdown-item" onClick={() => {
+                                    setShowDropdown(false);
+                                    // Change password would go here
+                                }}>
+                                    <Key size={18} />
+                                    Change Password
+                                </button>
+
+                                {approvedRoles.length > 1 && (
+                                    <button className="dropdown-item" onClick={handleSwitchRole}>
+                                        <ArrowLeftRight size={18} />
+                                        Switch Role
+                                    </button>
+                                )}
+
+                                <div className="dropdown-divider" />
+
+                                <button className="dropdown-item danger" onClick={handleLogout}>
+                                    <LogOut size={18} />
+                                    Sign Out
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        </header>
+    );
+};
+
+export default Header;

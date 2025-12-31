@@ -1,0 +1,477 @@
+import { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
+import Header from '../../components/Header';
+import Sidebar from '../../components/Sidebar';
+import Modal, { ConfirmModal } from '../../components/Modal';
+import StatusBadge from '../../components/StatusBadge';
+import EmptyState from '../../components/EmptyState';
+import {
+    LayoutDashboard, UserCheck, History, Ban,
+    Check, X, Unlock, Eye, Phone, MapPin, FileText, Users
+} from 'lucide-react';
+import { formatDateTime, getInitials } from '../../utils/validators';
+import MyRoles from '../shared/MyRoles';
+
+const sidebarItems = [
+    {
+        title: 'Main',
+        items: [
+            { path: '', label: 'Dashboard', icon: LayoutDashboard },
+            { path: '/pending', label: 'Pending Approvals', icon: UserCheck },
+            { path: '/history', label: 'Visit History', icon: History },
+            { path: '/blocked', label: 'Blocked Visitors', icon: Ban },
+            { path: '/my-roles', label: 'My Roles', icon: Users }
+        ]
+    }
+];
+
+// Dashboard Overview
+const DashboardHome = () => {
+    const { currentUser, currentRole } = useAuth();
+    const { visitors, getSocietyById } = useData();
+
+    const society = getSocietyById(currentRole?.societyId);
+
+    const myVisitors = visitors.filter(v => v.residentId === currentUser?.id);
+    const pendingVisitors = myVisitors.filter(v => v.status === 'pending');
+    const approvedToday = myVisitors.filter(v => {
+        const today = new Date().toDateString();
+        return v.status === 'approved' && new Date(v.entryTime).toDateString() === today;
+    });
+    const blockedVisitors = myVisitors.filter(v => v.status === 'blocked');
+
+    return (
+        <div>
+            <div className="alert alert-info mb-6">
+                <span>
+                    <strong>{society?.name}</strong> • Block {currentRole?.block}, Flat {currentRole?.flatNumber}
+                </span>
+            </div>
+
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <div className="stat-icon">
+                        <UserCheck size={24} />
+                    </div>
+                    <div className="stat-content">
+                        <div className="stat-value">{pendingVisitors.length}</div>
+                        <div className="stat-label">Pending Approvals</div>
+                    </div>
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-icon">
+                        <Check size={24} />
+                    </div>
+                    <div className="stat-content">
+                        <div className="stat-value">{approvedToday.length}</div>
+                        <div className="stat-label">Approved Today</div>
+                    </div>
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-icon">
+                        <Ban size={24} />
+                    </div>
+                    <div className="stat-content">
+                        <div className="stat-value">{blockedVisitors.length}</div>
+                        <div className="stat-label">Blocked Visitors</div>
+                    </div>
+                </div>
+            </div>
+
+            {pendingVisitors.length > 0 && (
+                <div className="card">
+                    <div className="card-header">
+                        <h3 className="card-title">
+                            <UserCheck size={20} />
+                            Pending Visitor Approvals
+                        </h3>
+                    </div>
+                    <p className="text-muted">
+                        You have {pendingVisitors.length} visitor(s) waiting for your approval.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Pending Approvals
+const PendingPage = () => {
+    const { currentUser } = useAuth();
+    const { visitors, updateVisitor } = useData();
+    const [selectedVisitor, setSelectedVisitor] = useState(null);
+    const [showBlockConfirm, setShowBlockConfirm] = useState(null);
+
+    const pendingVisitors = visitors.filter(v =>
+        v.residentId === currentUser?.id && v.status === 'pending'
+    );
+
+    const handleApprove = (visitorId) => {
+        updateVisitor(visitorId, { status: 'approved' });
+    };
+
+    const handleReject = (visitorId) => {
+        updateVisitor(visitorId, { status: 'rejected' });
+    };
+
+    const handleBlock = (visitorId) => {
+        updateVisitor(visitorId, {
+            status: 'blocked',
+            blockedBy: currentUser.id
+        });
+        setShowBlockConfirm(null);
+    };
+
+    return (
+        <div>
+            <h2 className="mb-6">Pending Approvals</h2>
+
+            {pendingVisitors.length === 0 ? (
+                <EmptyState
+                    icon={UserCheck}
+                    title="No Pending Visitors"
+                    description="All visitor requests have been handled."
+                />
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 'var(--space-4)' }}>
+                    {pendingVisitors.map(visitor => (
+                        <div key={visitor.id} className="card">
+                            <div className="flex gap-4" style={{ alignItems: 'flex-start' }}>
+                                {visitor.photo ? (
+                                    <img
+                                        src={visitor.photo}
+                                        alt={visitor.name}
+                                        className="visitor-photo-large"
+                                    />
+                                ) : (
+                                    <div className="header-avatar" style={{ width: 100, height: 100, fontSize: '2rem' }}>
+                                        {getInitials(visitor.name)}
+                                    </div>
+                                )}
+
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ marginBottom: 'var(--space-2)' }}>{visitor.name}</h4>
+                                    <div className="text-sm text-muted" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
+                                            <Phone size={14} /> {visitor.contactNumber}
+                                        </div>
+                                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
+                                            <MapPin size={14} /> {visitor.comingFrom}
+                                        </div>
+                                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
+                                            <FileText size={14} /> {visitor.purpose}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-4" style={{ flexWrap: 'wrap' }}>
+                                <button
+                                    className="btn btn-sm"
+                                    onClick={() => setSelectedVisitor(visitor)}
+                                >
+                                    <Eye size={14} />
+                                    Details
+                                </button>
+                                <div style={{ flex: 1 }} />
+                                <button
+                                    className="btn btn-success btn-sm"
+                                    onClick={() => handleApprove(visitor.id)}
+                                >
+                                    <Check size={14} />
+                                    Approve
+                                </button>
+                                <button
+                                    className="btn btn-danger btn-sm"
+                                    onClick={() => handleReject(visitor.id)}
+                                >
+                                    <X size={14} />
+                                    Reject
+                                </button>
+                                <button
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setShowBlockConfirm(visitor)}
+                                    style={{ color: 'var(--gray-400)' }}
+                                >
+                                    <Ban size={14} />
+                                    Block
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Visitor Details Modal */}
+            <Modal
+                isOpen={!!selectedVisitor}
+                onClose={() => setSelectedVisitor(null)}
+                title="Visitor Details"
+            >
+                {selectedVisitor && (
+                    <div>
+                        <div className="flex gap-4 mb-6" style={{ alignItems: 'center' }}>
+                            {selectedVisitor.photo ? (
+                                <img
+                                    src={selectedVisitor.photo}
+                                    alt={selectedVisitor.name}
+                                    className="visitor-photo-large"
+                                />
+                            ) : (
+                                <div className="header-avatar" style={{ width: 100, height: 100, fontSize: '2rem' }}>
+                                    {getInitials(selectedVisitor.name)}
+                                </div>
+                            )}
+                            <div>
+                                <h3>{selectedVisitor.name}</h3>
+                                <span className="badge badge-pending">{selectedVisitor.gender}</span>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+                            <div className="flex-between">
+                                <span className="text-muted">Contact:</span>
+                                <span>{selectedVisitor.contactNumber}</span>
+                            </div>
+                            <div className="flex-between">
+                                <span className="text-muted">Coming From:</span>
+                                <span>{selectedVisitor.comingFrom}</span>
+                            </div>
+                            <div className="flex-between">
+                                <span className="text-muted">Purpose:</span>
+                                <span>{selectedVisitor.purpose}</span>
+                            </div>
+                            <div className="flex-between">
+                                <span className="text-muted">ID Proof:</span>
+                                <span>{selectedVisitor.idProof}</span>
+                            </div>
+                            <div className="flex-between">
+                                <span className="text-muted">Entry Time:</span>
+                                <span>{formatDateTime(selectedVisitor.entryTime)}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                className="btn btn-success flex-1"
+                                onClick={() => { handleApprove(selectedVisitor.id); setSelectedVisitor(null); }}
+                            >
+                                <Check size={18} />
+                                Approve
+                            </button>
+                            <button
+                                className="btn btn-danger flex-1"
+                                onClick={() => { handleReject(selectedVisitor.id); setSelectedVisitor(null); }}
+                            >
+                                <X size={18} />
+                                Reject
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Block Confirmation */}
+            <ConfirmModal
+                isOpen={!!showBlockConfirm}
+                onClose={() => setShowBlockConfirm(null)}
+                onConfirm={() => handleBlock(showBlockConfirm?.id)}
+                title="Block Visitor"
+                message={`Are you sure you want to block ${showBlockConfirm?.name}? Blocked visitors cannot be approved until unblocked.`}
+                confirmText="Block"
+                variant="danger"
+            />
+        </div>
+    );
+};
+
+// Visit History
+const HistoryPage = () => {
+    const { currentUser } = useAuth();
+    const { visitors } = useData();
+
+    const myVisitors = visitors
+        .filter(v => v.residentId === currentUser?.id && v.status !== 'pending')
+        .sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime));
+
+    return (
+        <div>
+            <h2 className="mb-6">Visit History</h2>
+
+            {myVisitors.length === 0 ? (
+                <EmptyState
+                    icon={History}
+                    title="No Visit History"
+                    description="Your past visitor approvals will appear here."
+                />
+            ) : (
+                <div className="card">
+                    <div className="table-container">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th>Visitor</th>
+                                    <th>Purpose</th>
+                                    <th>Entry Time</th>
+                                    <th>Exit Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {myVisitors.map(visitor => (
+                                    <tr key={visitor.id}>
+                                        <td>
+                                            <div className="flex gap-3" style={{ alignItems: 'center' }}>
+                                                {visitor.photo ? (
+                                                    <img
+                                                        src={visitor.photo}
+                                                        alt={visitor.name}
+                                                        style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', objectFit: 'cover' }}
+                                                    />
+                                                ) : (
+                                                    <div className="header-avatar" style={{ width: 40, height: 40, fontSize: '0.75rem' }}>
+                                                        {getInitials(visitor.name)}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <div className="font-medium">{visitor.name}</div>
+                                                    <div className="text-xs text-muted">{visitor.contactNumber}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="text-muted">{visitor.purpose}</td>
+                                        <td className="text-sm text-muted">{formatDateTime(visitor.entryTime)}</td>
+                                        <td className="text-sm text-muted">
+                                            {visitor.exitTime ? formatDateTime(visitor.exitTime) : '—'}
+                                        </td>
+                                        <td>
+                                            <StatusBadge status={visitor.status} />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Blocked Visitors
+const BlockedPage = () => {
+    const { currentUser } = useAuth();
+    const { visitors, updateVisitor } = useData();
+    const [unblockConfirm, setUnblockConfirm] = useState(null);
+
+    const blockedVisitors = visitors.filter(v =>
+        v.residentId === currentUser?.id && v.status === 'blocked'
+    );
+
+    const handleUnblock = (visitorId) => {
+        updateVisitor(visitorId, {
+            status: 'pending_unblock', // Needs admin approval
+            unblockRequestedBy: currentUser.id
+        });
+        setUnblockConfirm(null);
+    };
+
+    return (
+        <div>
+            <h2 className="mb-6">Blocked Visitors</h2>
+
+            {blockedVisitors.length === 0 ? (
+                <EmptyState
+                    icon={Ban}
+                    title="No Blocked Visitors"
+                    description="Visitors you block will appear here."
+                />
+            ) : (
+                <div className="card">
+                    <div className="table-container">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th>Visitor</th>
+                                    <th>Contact</th>
+                                    <th>Blocked On</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {blockedVisitors.map(visitor => (
+                                    <tr key={visitor.id}>
+                                        <td>
+                                            <div className="flex gap-3" style={{ alignItems: 'center' }}>
+                                                {visitor.photo ? (
+                                                    <img
+                                                        src={visitor.photo}
+                                                        alt={visitor.name}
+                                                        style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', objectFit: 'cover' }}
+                                                    />
+                                                ) : (
+                                                    <div className="header-avatar" style={{ width: 40, height: 40, fontSize: '0.75rem' }}>
+                                                        {getInitials(visitor.name)}
+                                                    </div>
+                                                )}
+                                                <span className="font-medium">{visitor.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="text-muted">{visitor.contactNumber}</td>
+                                        <td className="text-sm text-muted">{formatDateTime(visitor.entryTime)}</td>
+                                        <td>
+                                            <button
+                                                className="btn btn-warning btn-sm"
+                                                onClick={() => setUnblockConfirm(visitor)}
+                                            >
+                                                <Unlock size={14} />
+                                                Request Unblock
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            <ConfirmModal
+                isOpen={!!unblockConfirm}
+                onClose={() => setUnblockConfirm(null)}
+                onConfirm={() => handleUnblock(unblockConfirm?.id)}
+                title="Request Unblock"
+                message={`Request to unblock ${unblockConfirm?.name}? This will need approval from the administrator.`}
+                confirmText="Request Unblock"
+                variant="primary"
+            />
+        </div>
+    );
+};
+
+// Main Dashboard Layout
+const ResidentDashboard = () => {
+    return (
+        <div className="app-container">
+            <Sidebar items={sidebarItems} basePath="/resident" />
+            <div className="main-content">
+                <Header title="Resident Dashboard" />
+                <div className="page-content">
+                    <Routes>
+                        <Route path="/" element={<DashboardHome />} />
+                        <Route path="/pending" element={<PendingPage />} />
+                        <Route path="/history" element={<HistoryPage />} />
+                        <Route path="/blocked" element={<BlockedPage />} />
+                        <Route path="/my-roles" element={<MyRoles />} />
+                    </Routes>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ResidentDashboard;
