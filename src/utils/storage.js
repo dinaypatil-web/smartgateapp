@@ -1,4 +1,4 @@
-// Storage utility functions for localStorage operations
+import * as encryption from './encryption';
 
 const STORAGE_KEYS = {
     USERS: 'sge_users',
@@ -13,19 +13,19 @@ const STORAGE_KEYS = {
 // Initialize default data structure
 const initializeStorage = () => {
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([]));
+        setItem(STORAGE_KEYS.USERS, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.SOCIETIES)) {
-        localStorage.setItem(STORAGE_KEYS.SOCIETIES, JSON.stringify([]));
+        setItem(STORAGE_KEYS.SOCIETIES, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.VISITORS)) {
-        localStorage.setItem(STORAGE_KEYS.VISITORS, JSON.stringify([]));
+        setItem(STORAGE_KEYS.VISITORS, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.NOTICES)) {
-        localStorage.setItem(STORAGE_KEYS.NOTICES, JSON.stringify([]));
+        setItem(STORAGE_KEYS.NOTICES, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.PRE_APPROVALS)) {
-        localStorage.setItem(STORAGE_KEYS.PRE_APPROVALS, JSON.stringify([]));
+        setItem(STORAGE_KEYS.PRE_APPROVALS, []);
     }
 };
 
@@ -33,7 +33,24 @@ const initializeStorage = () => {
 const getItem = (key) => {
     try {
         const item = localStorage.getItem(key);
-        return item ? JSON.parse(item) : null;
+        if (!item) return null;
+
+        // Check if data is encrypted
+        if (encryption.isEncrypted(item)) {
+            const decrypted = encryption.decrypt(item);
+            return decrypted;
+        } else {
+            // Migration: If data is not encrypted, parse it, then encrypt and save it back
+            try {
+                const parsed = JSON.parse(item);
+                // Encrypt and save back for future use
+                setItem(key, parsed);
+                return parsed;
+            } catch (e) {
+                // If it's not JSON either, return as is (might be a simple string)
+                return item;
+            }
+        }
     } catch (error) {
         console.error(`Error reading ${key} from localStorage:`, error);
         return null;
@@ -42,8 +59,12 @@ const getItem = (key) => {
 
 const setItem = (key, value) => {
     try {
-        localStorage.setItem(key, JSON.stringify(value));
-        return true;
+        const encrypted = encryption.encrypt(value);
+        if (encrypted) {
+            localStorage.setItem(key, encrypted);
+            return true;
+        }
+        return false;
     } catch (error) {
         console.error(`Error writing ${key} to localStorage:`, error);
         return false;
