@@ -5,15 +5,18 @@ import App from './App'
 import './index.css'
 import { AuthProvider } from './context/AuthContext'
 import { DataProvider } from './context/DataContext'
+import { UIProvider } from './context/UIContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <BrowserRouter>
-            <DataProvider>
-                <AuthProvider>
-                    <App />
-                </AuthProvider>
-            </DataProvider>
+            <UIProvider>
+                <DataProvider>
+                    <AuthProvider>
+                        <App />
+                    </AuthProvider>
+                </DataProvider>
+            </UIProvider>
         </BrowserRouter>
     </React.StrictMode>
 )

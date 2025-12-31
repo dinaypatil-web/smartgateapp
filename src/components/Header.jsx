@@ -2,16 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import {
-    Home, LogOut, User, Key, ChevronDown,
-    ArrowLeftRight, Settings, AlertTriangle
-} from 'lucide-react';
+import { Menu, AlertTriangle, ChevronDown, User, Key, ArrowLeftRight, LogOut } from 'lucide-react';
+import { useUI } from '../context/UIContext';
 import { getInitials, getRoleLabel } from '../utils/validators';
 
 const Header = ({ title }) => {
     const navigate = useNavigate();
     const { currentUser, currentRole, logout } = useAuth();
     const { getSocietyById } = useData();
+    const { toggleMobileSidebar } = useUI();
 
     const [showDropdown, setShowDropdown] = useState(false);
 
@@ -31,6 +30,13 @@ const Header = ({ title }) => {
     return (
         <header className="header">
             <div className="header-left">
+                <button
+                    className="menu-toggle"
+                    onClick={toggleMobileSidebar}
+                    aria-label="Toggle Menu"
+                >
+                    <Menu size={20} />
+                </button>
                 <h1 className="header-title">{title}</h1>
                 {society && (
                     <span className="badge badge-active">{society.name}</span>

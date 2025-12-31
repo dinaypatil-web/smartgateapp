@@ -908,6 +908,32 @@ a:hover {
     border-top: 1px solid var(--border-color);
 }
 
+.sidebar-close {
+    display: none;
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-glass);
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 45;
+    animation: fadeIn var(--transition-fast);
+}
+
 /* ===== Header ===== */
 .header {
     display: flex;
@@ -925,6 +951,25 @@ a:hover {
     display: flex;
     align-items: center;
     gap: var(--space-4);
+}
+
+.menu-toggle {
+    display: none;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.menu-toggle:hover {
+    border-color: var(--border-active);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .header-title {
@@ -1484,16 +1529,44 @@ a:hover {
 
     .sidebar.open {
         transform: translateX(0);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .sidebar.open~.sidebar-backdrop {
+        display: block;
+    }
+
+    .sidebar-close {
+        display: flex;
     }
 
     .main-content {
         margin-left: 0;
+    }
+
+    .menu-toggle {
+        display: flex;
     }
 }
 
 @media (max-width: 768px) {
     .header {
         padding: var(--space-3) var(--space-4);
+    }
+
+    .header-title {
+        font-size: var(--font-size-lg);
+    }
+
+    .header-user-info {
+        display: none;
+        /* Hide name/role on mobile */
+    }
+
+    .header-user {
+        padding: var(--space-1);
+        border: none;
+        background: none;
     }
 
     .page-content {
@@ -1512,6 +1585,27 @@ a:hover {
         margin: var(--space-4);
         max-height: calc(100vh - var(--space-8));
     }
+
+    .stat-card {
+        padding: var(--space-4);
+    }
+
+    .btn-lg {
+        padding: var(--space-3) var(--space-5);
+        font-size: var(--font-size-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .header-left .badge {
+        display: none;
+        /* Hide society name on very small screens */
+    }
+
+    .stats-grid {
+        gap: var(--space-4);
+    }
+
 }
 
 /* ===== Scrollbar ===== */
