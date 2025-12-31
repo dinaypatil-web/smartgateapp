@@ -120,6 +120,10 @@ export const DataProvider = ({ children }) => {
         return visitors.filter(v => v.residentId === residentId);
     };
 
+    const getVisitorsBySociety = (societyId) => {
+        return visitors.filter(v => v.societyId === societyId);
+    };
+
     // Notice operations
     const addNotice = (noticeData) => {
         const notice = {
@@ -162,6 +166,7 @@ export const DataProvider = ({ children }) => {
     const getPreApprovalsBySociety = (societyId) => {
         return preApprovals.filter(p => p.societyId === societyId);
     };
+
 
     const getPreApprovalsByResident = (residentId) => {
         return preApprovals.filter(p => p.residentId === residentId);
