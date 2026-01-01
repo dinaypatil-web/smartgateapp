@@ -134,7 +134,7 @@ const Signup = () => {
         setLoading(true);
 
         try {
-            const result = signup({
+            const result = await signup({
                 name: formData.name,
                 email: formData.email,
                 mobile: formData.mobile,

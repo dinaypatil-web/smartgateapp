@@ -38,13 +38,13 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    const login = (emailOrLoginName, password) => {
+    const login = async (emailOrLoginName, password) => {
         // Try email first
-        let user = getUserByEmail(emailOrLoginName);
+        let user = await getUserByEmail(emailOrLoginName);
 
         // If not found, try loginName (for security personnel)
         if (!user) {
-            user = getUserByLoginName(emailOrLoginName);
+            user = await getUserByLoginName(emailOrLoginName);
         }
 
         if (!user) {
@@ -79,9 +79,9 @@ export const AuthProvider = ({ children }) => {
         storage.setCurrentRole(role);
     };
 
-    const signup = (userData) => {
+    const signup = async (userData) => {
         // Check if email already exists
-        const existingUser = getUserByEmail(userData.email);
+        const existingUser = await getUserByEmail(userData.email);
 
         if (existingUser) {
             // User exists, add new role
@@ -133,13 +133,13 @@ export const AuthProvider = ({ children }) => {
             isResigned: false
         };
 
-        addUser(newUser);
+        await addUser(newUser);
         return { success: true, isNewUser: true };
     };
 
-    const createSecurityUser = (userData, societyId, createdBy) => {
+    const createSecurityUser = async (userData, societyId, createdBy) => {
         // Check if loginName already exists
-        const existingUser = getUserByLoginName(userData.loginName);
+        const existingUser = await getUserByLoginName(userData.loginName);
         if (existingUser) {
             return { success: false, error: 'Login name already exists' };
         }
@@ -159,17 +159,17 @@ export const AuthProvider = ({ children }) => {
             isResigned: false
         };
 
-        addUser(newUser);
+        await addUser(newUser);
         return { success: true };
     };
 
-    const changePassword = (userId, newPassword) => {
-        updateUser(userId, { password: newPassword });
+    const changePassword = async (userId, newPassword) => {
+        await updateUser(userId, { password: newPassword });
         return { success: true };
     };
 
-    const resetPassword = (email, securityAnswer, newPassword) => {
-        const user = getUserByEmail(email);
+    const resetPassword = async (email, securityAnswer, newPassword) => {
+        const user = await getUserByEmail(email);
         if (!user) {
             return { success: false, error: 'User not found' };
         }
@@ -178,7 +178,7 @@ export const AuthProvider = ({ children }) => {
             return { success: false, error: 'Security answer is incorrect' };
         }
 
-        updateUser(user.id, { password: newPassword });
+        await updateUser(user.id, { password: newPassword });
         return { success: true };
     };
 

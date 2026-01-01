@@ -9,11 +9,21 @@ const SECRET_KEY = 'sge_secret_key_v1'; // In production, this should be an envi
  */
 export const encrypt = (data) => {
     try {
+        if (data === null || data === undefined) {
+            console.warn('Encryption: Attempting to encrypt null/undefined data');
+            return null;
+        }
+        
         const jsonString = JSON.stringify(data);
-        return CryptoJS.AES.encrypt(jsonString, SECRET_KEY).toString();
+        console.log('Encryption: Data to encrypt length:', jsonString.length);
+        
+        const encrypted = CryptoJS.AES.encrypt(jsonString, SECRET_KEY).toString();
+        console.log('Encryption: Successfully encrypted data');
+        
+        return encrypted;
     } catch (error) {
         console.error('Encryption error:', error);
-        return null;
+        throw new Error(`Encryption failed: ${error.message}`);
     }
 };
 

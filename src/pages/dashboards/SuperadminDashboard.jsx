@@ -153,7 +153,7 @@ const SocietiesPage = () => {
         setShowModal(true);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         const societyData = {
@@ -164,18 +164,21 @@ const SocietiesPage = () => {
             createdBy: currentUser.id
         };
 
-        if (editingSociety) {
-            updateSociety(editingSociety.id, societyData);
-        } else {
-            addSociety(societyData);
+        try {
+            if (editingSociety) {
+                await updateSociety(editingSociety.id, societyData);
+            } else {
+                await addSociety(societyData);
+            }
+            setShowModal(false);
+            resetForm();
+        } catch (error) {
+            console.error('Error saving society:', error);
         }
-
-        setShowModal(false);
-        resetForm();
     };
 
-    const handleDelete = (id) => {
-        deleteSociety(id);
+    const handleDelete = async (id) => {
+        await deleteSociety(id);
         setDeleteConfirm(null);
     };
 
@@ -349,21 +352,21 @@ const AdministratorsPage = () => {
         u.roles.some(r => r.role === 'administrator')
     );
 
-    const handleApprove = (userId, roleIndex) => {
+    const handleApprove = async (userId, roleIndex) => {
         const user = users.find(u => u.id === userId);
         if (user) {
             const updatedRoles = [...user.roles];
             updatedRoles[roleIndex] = { ...updatedRoles[roleIndex], status: 'approved' };
-            updateUser(userId, { roles: updatedRoles });
+            await updateUser(userId, { roles: updatedRoles });
         }
     };
 
-    const handleReject = (userId, roleIndex) => {
+    const handleReject = async (userId, roleIndex) => {
         const user = users.find(u => u.id === userId);
         if (user) {
             const updatedRoles = [...user.roles];
             updatedRoles[roleIndex] = { ...updatedRoles[roleIndex], status: 'rejected' };
-            updateUser(userId, { roles: updatedRoles });
+            await updateUser(userId, { roles: updatedRoles });
         }
     };
 
@@ -457,11 +460,11 @@ const MyRolesPage = () => {
 
     const myRoles = currentUser?.roles || [];
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        const result = signup({
+        const result = await signup({
             name: currentUser.name,
             email: currentUser.email,
             mobile: currentUser.mobile,

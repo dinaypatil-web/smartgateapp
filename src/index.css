@@ -1321,8 +1321,11 @@ a:hover {
     background: var(--bg-primary);
     position: relative;
     width: 100%;
-    max-width: 100%; /* Ensure it doesn't overflow parent */
+    max-width: 100%;
+    min-height: 400px;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
 .camera-video {
@@ -1351,6 +1354,32 @@ a:hover {
     justify-content: center;
     gap: var(--space-3);
     margin-top: var(--space-4);
+    padding: var(--space-4) 0;
+    flex-shrink: 0;
+}
+
+.camera-error-container {
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.camera-troubleshooting {
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+}
+
+.camera-troubleshooting ol {
+    color: var(--text-secondary);
+}
+
+.camera-error-actions {
+    flex-wrap: wrap;
+}
+
+.camera-error-actions .btn {
+    min-width: 140px;
 }
 
 /* ===== Visitor Photo ===== */
@@ -1947,18 +1976,27 @@ select {
         border-radius: var(--radius-lg);
         width: 100%;
         max-width: 100%;
-        max-height: calc(100vh - 300px); /* Limit height to viewport */
+        min-height: 350px;
+        max-height: calc(100vh - 200px);
         overflow: hidden;
+    }
+
+    .camera-video {
+        min-height: 250px;
+        max-height: 50vh;
     }
 
     .camera-controls {
         flex-wrap: wrap;
         gap: var(--space-3);
+        padding: var(--space-3) 0;
     }
 
     .camera-controls .btn {
         flex: 1;
         min-width: 120px;
+        font-size: var(--font-size-sm);
+        padding: var(--space-3) var(--space-4);
     }
 
     /* Empty state improvements */

@@ -26,7 +26,7 @@ const Login = () => {
         setError('');
 
         try {
-            const result = login(formData.emailOrLoginName, formData.password);
+            const result = await login(formData.emailOrLoginName, formData.password);
 
             if (!result.success) {
                 setError(result.error);

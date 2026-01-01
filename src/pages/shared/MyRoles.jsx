@@ -27,11 +27,11 @@ const MyRoles = () => {
         setError('');
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        const result = signup({
+        const result = await signup({
             name: currentUser.name,
             email: currentUser.email,
             mobile: currentUser.mobile,

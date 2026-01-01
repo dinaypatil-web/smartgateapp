@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -34,24 +34,47 @@ const sidebarItems = [
 // Dashboard Overview
 const DashboardHome = () => {
     const { currentUser, currentRole } = useAuth();
-    const { visitors, getSocietyById } = useData();
+    const { visitors, getSocietyById, refreshData } = useData();
+    const [lastRefresh, setLastRefresh] = useState(Date.now());
 
     const society = getSocietyById(currentRole?.societyId);
 
-    const myVisitors = visitors.filter(v => v.residentId === currentUser?.id);
+    const handleRefresh = async () => {
+        console.log('ResidentDashboard: Manual refresh triggered on home page');
+        await refreshData();
+        setLastRefresh(Date.now());
+    };
+
+    const myVisitors = visitors.filter(v => {
+        // Handle both camelCase and lowercase field names
+        const visitorResidentId = v.residentId || v.residentid;
+        return visitorResidentId === currentUser?.id;
+    });
     const pendingVisitors = myVisitors.filter(v => v.status === 'pending');
     const approvedToday = myVisitors.filter(v => {
         const today = new Date().toDateString();
-        return v.status === 'approved' && new Date(v.entryTime).toDateString() === today;
+        // Handle both camelCase and lowercase field names for entryTime
+        const entryTime = v.entryTime || v.entrytime;
+        return v.status === 'approved' && new Date(entryTime).toDateString() === today;
     });
     const blockedVisitors = myVisitors.filter(v => v.status === 'blocked' || v.status === 'pending_unblock');
 
     return (
         <div>
-            <div className="alert alert-info mb-6">
-                <span>
-                    <strong>{society?.name}</strong> • Block {currentRole?.block}, Flat {currentRole?.flatNumber}
-                </span>
+            <div className="flex-between mb-6">
+                <div className="alert alert-info" style={{ marginBottom: 0 }}>
+                    <span>
+                        <strong>{society?.name}</strong> • Block {currentRole?.block}, Flat {currentRole?.flatNumber}
+                    </span>
+                </div>
+                <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleRefresh}
+                    title="Last refreshed: {new Date(lastRefresh).toLocaleTimeString()}"
+                >
+                    <Calendar size={16} />
+                    Refresh
+                </button>
             </div>
 
             <div className="stats-grid">
@@ -106,13 +129,40 @@ const DashboardHome = () => {
 // Pending Approvals
 const PendingPage = () => {
     const { currentUser } = useAuth();
-    const { visitors, updateVisitor } = useData();
+    const { visitors, updateVisitor, refreshData } = useData();
     const [selectedVisitor, setSelectedVisitor] = useState(null);
     const [showBlockConfirm, setShowBlockConfirm] = useState(null);
+    const [lastRefresh, setLastRefresh] = useState(Date.now());
 
-    const pendingVisitors = visitors.filter(v =>
-        v.residentId === currentUser?.id && v.status === 'pending'
-    );
+    // Auto-refresh every 30 seconds to check for new visitors
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            console.log('ResidentDashboard: Auto-refresh checking for new visitors...');
+            await refreshData();
+            setLastRefresh(Date.now());
+        }, 30000); // 30 seconds
+
+        return () => clearInterval(interval);
+    }, [refreshData]);
+
+    const pendingVisitors = visitors.filter(v => {
+        // Handle both camelCase and lowercase field names
+        const visitorResidentId = v.residentId || v.residentid;
+        console.log('ResidentDashboard: Filtering visitor:', v, 'residentId match:', visitorResidentId === currentUser?.id);
+        console.log('ResidentDashboard: Visitor fields:', {
+            contactNumber: v.contactNumber || v.contactnumber,
+            comingFrom: v.comingFrom || v.comingfrom,
+            idProof: v.idProof || v.idproof,
+            purpose: v.purpose
+        });
+        return visitorResidentId === currentUser?.id && v.status === 'pending';
+    });
+
+    const handleRefresh = async () => {
+        console.log('ResidentDashboard: Manual refresh triggered');
+        await refreshData();
+        setLastRefresh(Date.now());
+    };
 
     const handleApprove = (visitorId) => {
         updateVisitor(visitorId, { status: 'approved' });
@@ -132,13 +182,23 @@ const PendingPage = () => {
 
     return (
         <div>
-            <h2 className="mb-6">Pending Approvals</h2>
+            <div className="flex-between mb-6">
+                <h2>Pending Approvals</h2>
+                <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleRefresh}
+                    title="Last refreshed: {new Date(lastRefresh).toLocaleTimeString()}"
+                >
+                    <Calendar size={16} />
+                    Refresh
+                </button>
+            </div>
 
             {pendingVisitors.length === 0 ? (
                 <EmptyState
                     icon={UserCheck}
                     title="No Pending Visitors"
-                    description="All visitor requests have been handled."
+                    description="All visitor requests have been handled. Click refresh to check for new visitors."
                 />
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 'var(--space-4)' }}>
@@ -161,13 +221,16 @@ const PendingPage = () => {
                                     <h4 style={{ marginBottom: 'var(--space-2)' }}>{visitor.name}</h4>
                                     <div className="text-sm text-muted" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
                                         <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                                            <Phone size={14} /> {visitor.contactNumber}
+                                            <Phone size={14} /> {visitor.contactNumber || visitor.contactnumber || 'Not provided'}
                                         </div>
                                         <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                                            <MapPin size={14} /> {visitor.comingFrom}
+                                            <MapPin size={14} /> {visitor.comingFrom || visitor.comingfrom || 'Not provided'}
                                         </div>
                                         <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                                            <FileText size={14} /> {visitor.purpose}
+                                            <FileText size={14} /> {visitor.purpose || 'Not provided'}
+                                        </div>
+                                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
+                                            <FileText size={14} /> ID: {visitor.idProof || visitor.idproof || 'Not provided'}
                                         </div>
                                     </div>
                                 </div>
@@ -239,23 +302,23 @@ const PendingPage = () => {
                         <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
                             <div className="flex-between">
                                 <span className="text-muted">Contact:</span>
-                                <span>{selectedVisitor.contactNumber}</span>
+                                <span>{selectedVisitor.contactNumber || selectedVisitor.contactnumber || 'Not provided'}</span>
                             </div>
                             <div className="flex-between">
                                 <span className="text-muted">Coming From:</span>
-                                <span>{selectedVisitor.comingFrom}</span>
+                                <span>{selectedVisitor.comingFrom || selectedVisitor.comingfrom || 'Not provided'}</span>
                             </div>
                             <div className="flex-between">
                                 <span className="text-muted">Purpose:</span>
-                                <span>{selectedVisitor.purpose}</span>
+                                <span>{selectedVisitor.purpose || 'Not provided'}</span>
                             </div>
                             <div className="flex-between">
                                 <span className="text-muted">ID Proof:</span>
-                                <span>{selectedVisitor.idProof}</span>
+                                <span>{selectedVisitor.idProof || selectedVisitor.idproof || 'Not provided'}</span>
                             </div>
                             <div className="flex-between">
                                 <span className="text-muted">Entry Time:</span>
-                                <span>{formatDateTime(selectedVisitor.entryTime)}</span>
+                                <span>{formatDateTime(selectedVisitor.entryTime || selectedVisitor.entrytime)}</span>
                             </div>
                         </div>
 
@@ -380,8 +443,8 @@ const HistoryPage = () => {
             <ConfirmModal
                 isOpen={!!showBlockConfirm}
                 onClose={() => setShowBlockConfirm(null)}
-                onConfirm={() => {
-                    updateVisitor(showBlockConfirm.id, {
+                onConfirm={async () => {
+                    await updateVisitor(showBlockConfirm.id, {
                         status: 'blocked',
                         blockedBy: currentUser.id
                     });
@@ -529,20 +592,24 @@ const InvitesPage = () => {
 
     const myInvites = preApprovals.filter(p => p.residentId === currentUser?.id);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        addPreApproval({
-            ...formData,
-            residentId: currentUser.id,
-            societyId: currentRole.societyId,
-            passCode: Math.floor(100000 + Math.random() * 900000).toString() // Generate 6 digit code
-        });
-        setShowAddInvite(false);
-        setFormData({ name: '', contactNumber: '', purpose: '', expectedDate: new Date().toISOString().split('T')[0], type: 'guest' });
+        try {
+            await addPreApproval({
+                ...formData,
+                residentId: currentUser.id,
+                societyId: currentRole.societyId,
+                passCode: Math.floor(100000 + Math.random() * 900000).toString() // Generate 6 digit code
+            });
+            setShowAddInvite(false);
+            setFormData({ name: '', contactNumber: '', purpose: '', expectedDate: new Date().toISOString().split('T')[0], type: 'guest' });
+        } catch (error) {
+            console.error('Error adding pre-approval:', error);
+        }
     };
 
-    const handleCancelInvite = (id) => {
-        updatePreApproval(id, { status: 'cancelled' });
+    const handleCancelInvite = async (id) => {
+        await updatePreApproval(id, { status: 'cancelled' });
     };
 
     return (

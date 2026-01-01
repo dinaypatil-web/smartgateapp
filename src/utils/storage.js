@@ -59,15 +59,38 @@ const getItem = (key) => {
 
 const setItem = (key, value) => {
     try {
+        console.log(`Storage: Setting item for key: ${key}`);
+        
+        // Check localStorage quota
+        const storageUsage = JSON.stringify(localStorage).length;
+        const storageLimit = 5 * 1024 * 1024; // 5MB typical limit
+        console.log(`Storage: Current usage: ${storageUsage} bytes, Limit: ${storageLimit} bytes`);
+        
+        if (storageUsage > storageLimit * 0.9) {
+            console.warn('Storage: Approaching localStorage limit');
+            // Try to clear some old data or notify user
+            throw new Error('Storage quota exceeded. Please clear browser data.');
+        }
+        
         const encrypted = encryption.encrypt(value);
         if (encrypted) {
             localStorage.setItem(key, encrypted);
+            console.log(`Storage: Successfully set item for key: ${key}`);
             return true;
+        } else {
+            console.error(`Storage: Encryption failed for key: ${key}`);
+            throw new Error('Encryption failed');
         }
-        return false;
     } catch (error) {
         console.error(`Error writing ${key} to localStorage:`, error);
-        return false;
+        
+        if (error.name === 'QuotaExceededError' || error.message.includes('quota')) {
+            throw new Error('Storage quota exceeded. Please clear browser cache and try again.');
+        } else if (error.message.includes('SecurityError')) {
+            throw new Error('Storage access denied. Please check browser settings.');
+        } else {
+            throw new Error(`Storage write error: ${error.message}`);
+        }
     }
 };
 
@@ -166,9 +189,18 @@ export const getVisitorsByResident = (residentId) => {
 };
 
 export const addVisitor = (visitor) => {
-    const visitors = getVisitors();
-    visitors.push(visitor);
-    return setVisitors(visitors);
+    try {
+        console.log('Storage: Adding visitor to localStorage:', visitor);
+        const visitors = getVisitors();
+        console.log('Storage: Current visitors count:', visitors.length);
+        visitors.push(visitor);
+        const result = setVisitors(visitors);
+        console.log('Storage: Set visitors result:', result);
+        return result;
+    } catch (error) {
+        console.error('Storage: Error adding visitor:', error);
+        throw new Error(`Storage error: ${error.message}`);
+    }
 };
 export const updateVisitor = (id, updates) => {
     const visitors = getVisitors();

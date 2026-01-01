@@ -130,7 +130,7 @@ const NewVisitorPage = () => {
         setShowCamera(false);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
@@ -140,24 +140,66 @@ const NewVisitorPage = () => {
             return;
         }
 
-        addVisitor({
-            ...formData,
-            photo: photo,
-            societyId: currentRole?.societyId,
-            createdBy: currentUser.id
-        });
+        try {
+            console.log('Submitting visitor data:', {
+                ...formData,
+                photo: photo ? 'Photo captured' : 'No photo',
+                societyId: currentRole?.societyId,
+                createdBy: currentUser.id,
+                residentId: formData.residentId
+            });
 
-        setSuccess('Visitor entry created! Waiting for resident approval.');
-        setFormData({
-            name: '',
-            gender: 'male',
-            idProof: '',
-            comingFrom: '',
-            purpose: '',
-            contactNumber: '',
-            residentId: ''
-        });
-        setPhoto(null);
+            // Validate residentId is present
+            if (!formData.residentId) {
+                setError('Please select a resident to visit');
+                return;
+            }
+
+            const visitorData = {
+                ...formData,
+                photo: photo,
+                societyId: currentRole?.societyId,
+                createdBy: currentUser.id,
+                residentId: formData.residentId // Ensure this is explicitly included
+            };
+
+            console.log('Final visitor data to be saved:', visitorData);
+
+            const result = await addVisitor(visitorData);
+            console.log('Visitor added successfully:', result);
+
+            setSuccess('Visitor entry created! Waiting for resident approval.');
+            
+            // Reset form
+            setFormData({
+                name: '',
+                gender: 'male',
+                idProof: '',
+                comingFrom: '',
+                purpose: '',
+                contactNumber: '',
+                residentId: ''
+            });
+            setPhoto(null);
+
+        } catch (error) {
+            console.error('Error adding visitor:', error);
+            
+            // Provide more specific error messages
+            if (error.message) {
+                if (error.message.includes('storage')) {
+                    setError('Storage error: Unable to save visitor data. Please check your browser storage settings.');
+                } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                    setError('Network error: Unable to connect to the server. Please check your internet connection.');
+                } else if (error.message.includes('permission')) {
+                    setError('Permission error: You do not have permission to create visitor entries.');
+                } else {
+                    setError(`Failed to create visitor entry: ${error.message}`);
+                }
+            } else {
+                setError('Failed to create visitor entry. Please try again. If the problem persists, contact support.');
+            }
+        }
 
         setTimeout(() => setSuccess(''), 3000);
     };
@@ -166,7 +208,7 @@ const NewVisitorPage = () => {
         <div>
             <h2 className="mb-6">New Visitor Entry</h2>
 
-            <div className="card" style={{ maxWidth: '700px' }}>
+            <div className="card" style={{ maxWidth: '800px' }}>
                 {success && <div className="alert alert-success">{success}</div>}
                 {error && <div className="alert alert-error">{error}</div>}
 
@@ -331,20 +373,38 @@ const ActiveVisitsPage = () => {
     const { visitors, users, updateVisitor } = useData();
     const [filter, setFilter] = useState('all');
 
+    console.log('ActiveVisitsPage: All visitors:', visitors);
+    console.log('ActiveVisitsPage: Current role societyId:', currentRole?.societyId);
+
     const societyVisitors = visitors
-        .filter(v => v.societyId === currentRole?.societyId)
-        .sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime));
+        .filter(v => {
+            // Handle both camelCase and lowercase field names
+            const visitorSocietyId = v.societyId || v.societyid;
+            console.log('Filtering visitor:', v, 'societyId match:', visitorSocietyId === currentRole?.societyId);
+            return visitorSocietyId === currentRole?.societyId;
+        })
+        .sort((a, b) => {
+            // Handle both camelCase and lowercase field names for entryTime
+            const aEntryTime = a.entryTime || a.entrytime;
+            const bEntryTime = b.entryTime || b.entrytime;
+            return new Date(bEntryTime) - new Date(aEntryTime);
+        });
+
+    console.log('ActiveVisitsPage: Society visitors:', societyVisitors);
 
     const filteredVisitors = societyVisitors.filter(v => {
+        // Handle both camelCase and lowercase field names for exitTime
+        const exitTime = v.exitTime || v.exittime;
+        
         switch (filter) {
             case 'pending':
                 return v.status === 'pending';
             case 'approved':
-                return v.status === 'approved' && !v.exitTime;
+                return v.status === 'approved' && !exitTime;
             case 'inside':
-                return v.status === 'approved' && !v.exitTime;
+                return v.status === 'approved' && !exitTime;
             case 'exited':
-                return v.exitTime !== null;
+                return exitTime !== null;
             default:
                 return true;
         }
@@ -354,7 +414,7 @@ const ActiveVisitsPage = () => {
         const resident = users.find(u => u.id === residentId);
         if (!resident) return 'Unknown';
         const residentRole = resident.roles.find(r =>
-            r.role === 'resident' && r.societyId === currentRole?.societyId
+            r.role === 'resident' && (r.societyId === currentRole?.societyId || r.societyid === currentRole?.societyId)
         );
         return `${resident.name} (${residentRole?.block}-${residentRole?.flatNumber})`;
     };
@@ -440,16 +500,16 @@ const ActiveVisitsPage = () => {
                                             </div>
                                         </td>
                                         <td className="text-muted text-sm">{visitor.purpose || '—'}</td>
-                                        <td className="text-sm">{getResidentName(visitor.residentId)}</td>
-                                        <td className="text-sm text-muted">{formatDateTime(visitor.entryTime)}</td>
+                                        <td className="text-sm">{getResidentName(visitor.residentId || visitor.residentid)}</td>
+                                        <td className="text-sm text-muted">{formatDateTime(visitor.entryTime || visitor.entrytime)}</td>
                                         <td className="text-sm text-muted">
-                                            {visitor.exitTime ? formatDateTime(visitor.exitTime) : '—'}
+                                            {visitor.exitTime || visitor.exittime ? formatDateTime(visitor.exitTime || visitor.exittime) : '—'}
                                         </td>
                                         <td>
                                             <StatusBadge status={visitor.status} />
                                         </td>
                                         <td>
-                                            {visitor.status === 'approved' && !visitor.exitTime ? (
+                                            {visitor.status === 'approved' && !(visitor.exitTime || visitor.exittime) ? (
                                                 <button
                                                     className="btn btn-warning btn-sm"
                                                     onClick={() => handleCloseVisit(visitor.id)}
@@ -523,24 +583,29 @@ const VerifyPassPage = () => {
         setResult({ ...pass, residentName: resident?.name });
     };
 
-    const handleCheckIn = () => {
-        // Create a visitor entry based on pre-approval
-        addVisitor({
-            name: result.name,
-            contactNumber: result.contactNumber,
-            purpose: result.purpose,
-            residentId: result.residentId,
-            societyId: result.societyId,
-            status: 'approved', // Pre-approved implies auto-approval
-            entryTime: new Date().toISOString()
-        });
+    const handleCheckIn = async () => {
+        try {
+            // Create a visitor entry based on pre-approval
+            await addVisitor({
+                name: result.name,
+                contactNumber: result.contactNumber,
+                purpose: result.purpose,
+                residentId: result.residentId,
+                societyId: result.societyId,
+                status: 'approved', // Pre-approved implies auto-approval
+                entryTime: new Date().toISOString()
+            });
 
-        // Mark pre-approval as used
-        updatePreApproval(result.id, { status: 'used' });
+            // Mark pre-approval as used
+            await updatePreApproval(result.id, { status: 'used' });
 
-        setResult(null);
-        setPassCode('');
-        alert('Check-in successful!');
+            setResult(null);
+            setPassCode('');
+            alert('Check-in successful!');
+        } catch (error) {
+            console.error('Error checking in visitor:', error);
+            setError('Failed to check in visitor. Please try again.');
+        }
     };
 
     return (

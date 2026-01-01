@@ -210,21 +210,21 @@ const ResidentsPage = () => {
         u.roles.some(r => r.role === 'resident' && r.societyId === currentRole?.societyId)
     );
 
-    const handleApprove = (userId, roleIndex) => {
+    const handleApprove = async (userId, roleIndex) => {
         const user = users.find(u => u.id === userId);
         if (user) {
             const updatedRoles = [...user.roles];
             updatedRoles[roleIndex] = { ...updatedRoles[roleIndex], status: 'approved' };
-            updateUser(userId, { roles: updatedRoles });
+            await updateUser(userId, { roles: updatedRoles });
         }
     };
 
-    const handleReject = (userId, roleIndex) => {
+    const handleReject = async (userId, roleIndex) => {
         const user = users.find(u => u.id === userId);
         if (user) {
             const updatedRoles = [...user.roles];
             updatedRoles[roleIndex] = { ...updatedRoles[roleIndex], status: 'rejected' };
-            updateUser(userId, { roles: updatedRoles });
+            await updateUser(userId, { roles: updatedRoles });
         }
     };
 
@@ -368,11 +368,11 @@ const SecurityPage = () => {
         u.roles.some(r => r.role === 'security' && r.societyId === currentRole?.societyId)
     );
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        const result = createSecurityUser(formData, currentRole?.societyId, currentUser.id);
+        const result = await createSecurityUser(formData, currentRole?.societyId, currentUser.id);
 
         if (!result.success) {
             setError(result.error);
@@ -383,8 +383,8 @@ const SecurityPage = () => {
         setFormData({ name: '', mobile: '', loginName: '', password: '' });
     };
 
-    const handleDelete = (userId) => {
-        deleteUserById(userId);
+    const handleDelete = async (userId) => {
+        await deleteUserById(userId);
         setDeleteConfirm(null);
     };
 
@@ -715,14 +715,18 @@ const NoticesPage = () => {
         priority: 'normal'
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        addNotice({
-            ...formData,
-            societyId: currentRole?.societyId
-        });
-        setShowAddNotice(false);
-        setFormData({ title: '', content: '', priority: 'normal' });
+        try {
+            await addNotice({
+                ...formData,
+                societyId: currentRole?.societyId
+            });
+            setShowAddNotice(false);
+            setFormData({ title: '', content: '', priority: 'normal' });
+        } catch (error) {
+            console.error('Error adding notice:', error);
+        }
     };
 
     return (
