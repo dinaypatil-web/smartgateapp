@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { Camera, RotateCcw, Check, X } from 'lucide-react';
 
 const CameraCapture = ({ onCapture, onCancel }) => {
@@ -12,13 +12,18 @@ const CameraCapture = ({ onCapture, onCancel }) => {
     const startCamera = useCallback(async () => {
         try {
             setError('');
-            const mediaStream = await navigator.mediaDevices.getUserMedia({
+            // Check if device is mobile
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            const constraints = {
                 video: {
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    facingMode: 'user'
+                    width: { ideal: isMobile ? 1280 : 640 },
+                    height: { ideal: isMobile ? 720 : 480 },
+                    facingMode: 'user' // Front camera for selfies
                 }
-            });
+            };
+
+            const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
 
             if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
@@ -27,7 +32,13 @@ const CameraCapture = ({ onCapture, onCancel }) => {
             }
         } catch (err) {
             console.error('Camera error:', err);
-            setError('Unable to access camera. Please allow camera permissions.');
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                setError('Camera permission denied. Please allow camera access in your browser settings.');
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                setError('No camera found on this device.');
+            } else {
+                setError('Unable to access camera. Please check your device permissions.');
+            }
         }
     }, []);
 
@@ -73,10 +84,10 @@ const CameraCapture = ({ onCapture, onCancel }) => {
     }, [stopCamera, onCancel]);
 
     // Start camera on mount
-    useState(() => {
+    useEffect(() => {
         startCamera();
         return () => stopCamera();
-    }, []);
+    }, [startCamera, stopCamera]);
 
     return (
         <div className="camera-container">
@@ -92,7 +103,7 @@ const CameraCapture = ({ onCapture, onCancel }) => {
                 </div>
             ) : photo ? (
                 <>
-                    <img src={photo} alt="Captured" className="camera-preview" />
+                    <img src={photo} alt="Captured" className="camera-preview" style={{ transform: 'scaleX(-1)' }} />
                     <div className="camera-controls">
                         <button className="btn btn-secondary" onClick={retakePhoto}>
                             <RotateCcw size={18} />

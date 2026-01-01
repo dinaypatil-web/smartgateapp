@@ -144,14 +144,31 @@ body {
     color: var(--text-primary);
     background: var(--bg-primary);
     min-height: 100vh;
+    min-height: -webkit-fill-available; /* iOS Safari */
+    height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Prevent pull-to-refresh on mobile (optional) */
+    overscroll-behavior-y: contain;
+    /* Allow scrolling but prevent unwanted horizontal scroll */
+    overflow-x: auto;
+    overflow-y: auto;
+    /* Ensure body fits viewport */
+    width: 100%;
+    max-width: 100vw;
 }
 
 #root {
     min-height: 100vh;
+    min-height: -webkit-fill-available; /* iOS Safari */
+    height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari */
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100vw;
+    overflow: hidden; /* Prevent root from scrolling, let children handle it */
 }
 
 /* ===== Typography ===== */
@@ -208,6 +225,12 @@ a:hover {
 .app-container {
     display: flex;
     min-height: 100vh;
+    min-height: -webkit-fill-available; /* iOS Safari */
+    height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari */
+    width: 100%;
+    max-width: 100vw;
+    overflow: hidden; /* Container doesn't scroll, children do */
 }
 
 .main-content {
@@ -216,11 +239,20 @@ a:hover {
     flex-direction: column;
     margin-left: 280px;
     min-height: 100vh;
+    min-height: -webkit-fill-available; /* iOS Safari */
+    height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari */
     transition: margin-left var(--transition-base);
+    width: calc(100% - 280px);
+    max-width: calc(100vw - 280px);
+    overflow: hidden; /* Prevent main-content from scrolling */
+    position: relative;
 }
 
 .main-content.no-sidebar {
     margin-left: 0;
+    width: 100%;
+    max-width: 100vw;
 }
 
 .page-content {
@@ -228,12 +260,18 @@ a:hover {
     padding: var(--space-8);
     background: var(--gradient-dark);
     position: relative;
-    overflow-x: hidden;
+    overflow-x: auto; /* Allow horizontal scroll when needed */
+    overflow-y: auto; /* Allow vertical scroll */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    width: 100%;
+    max-width: 100%;
+    /* Ensure content doesn't overflow viewport */
+    box-sizing: border-box;
 }
 
 .page-content::before {
     content: '';
-    position: absolute;
+    position: fixed; /* Changed to fixed so it doesn't affect scrolling */
     top: 0;
     left: 50%;
     transform: translateX(-50%);
@@ -255,6 +293,10 @@ a:hover {
     position: relative;
     z-index: 1;
     transition: all var(--transition-base);
+    width: 100%;
+    max-width: 100%; /* Ensure card doesn't overflow parent */
+    box-sizing: border-box;
+    overflow: visible; /* Allow content to be visible, but prevent card itself from overflowing */
 }
 
 .card:hover {
@@ -289,6 +331,9 @@ a:hover {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: var(--space-6);
     margin-bottom: var(--space-8);
+    width: 100%;
+    max-width: 100%; /* Ensure grid doesn't overflow parent */
+    box-sizing: border-box;
 }
 
 .stat-card {
@@ -564,14 +609,21 @@ a:hover {
 
 /* ===== Tables ===== */
 .table-container {
-    overflow-x: auto;
+    overflow-x: auto; /* Horizontal scroll when table is wide */
+    overflow-y: auto; /* Vertical scroll when table is tall */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 100%; /* Ensure it doesn't overflow parent */
+    position: relative; /* For scroll indicators */
 }
 
 .table {
     width: 100%;
+    min-width: 100%; /* Ensure table takes full width of container */
     border-collapse: collapse;
+    table-layout: auto; /* Allow table to expand based on content */
 }
 
 .table th,
@@ -661,6 +713,14 @@ a:hover {
     padding: var(--space-4);
     z-index: var(--z-modal);
     animation: fadeIn var(--transition-fast);
+    overflow-y: auto; /* Allow modal overlay to scroll if needed */
+    overflow-x: auto; /* Allow horizontal scroll if needed */
+    -webkit-overflow-scrolling: touch;
+    /* Safe area for notched devices */
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
 }
 
 .modal {
@@ -670,8 +730,14 @@ a:hover {
     width: 100%;
     max-width: 500px;
     max-height: 90vh;
-    overflow-y: auto;
+    max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--space-8));
+    overflow-y: auto; /* Allow vertical scroll when content is tall */
+    overflow-x: auto; /* Allow horizontal scroll when content is wide */
+    -webkit-overflow-scrolling: touch;
     animation: slideUp var(--transition-base);
+    display: flex;
+    flex-direction: column;
+    margin: auto; /* Center the modal */
 }
 
 .modal-header {
@@ -708,6 +774,11 @@ a:hover {
 
 .modal-body {
     padding: var(--space-6);
+    overflow-y: auto; /* Allow scrolling in modal body if needed */
+    overflow-x: auto; /* Allow horizontal scroll if needed */
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+    min-height: 0; /* Important for flex scrolling */
 }
 
 .modal-footer {
@@ -721,13 +792,25 @@ a:hover {
 /* ===== Auth Pages ===== */
 .auth-container {
     min-height: 100vh;
+    min-height: -webkit-fill-available; /* iOS Safari */
+    height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari */
     display: flex;
     align-items: center;
     justify-content: center;
     padding: var(--space-4);
     background: var(--gradient-dark);
     position: relative;
-    overflow: hidden;
+    overflow-y: auto; /* Allow scrolling if content is tall */
+    overflow-x: auto; /* Allow horizontal scroll if needed */
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100vw;
+    /* Safe area for notched devices */
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
 }
 
 .auth-container::before {
@@ -745,6 +828,7 @@ a:hover {
 .auth-card {
     width: 100%;
     max-width: 440px;
+    max-width: min(440px, calc(100vw - var(--space-8) - env(safe-area-inset-left) - env(safe-area-inset-right)));
     background: var(--bg-card);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border-color);
@@ -752,6 +836,10 @@ a:hover {
     padding: var(--space-10);
     position: relative;
     z-index: 1;
+    box-sizing: border-box;
+    overflow-y: auto; /* Allow scrolling if content is tall */
+    max-height: calc(100vh - var(--space-8) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    margin: auto; /* Center the card */
 }
 
 .auth-logo {
@@ -807,6 +895,9 @@ a:hover {
 .sidebar {
     width: 280px;
     height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari */
+    max-height: 100vh;
+    max-height: -webkit-fill-available; /* iOS Safari */
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
     position: fixed;
@@ -816,6 +907,11 @@ a:hover {
     flex-direction: column;
     z-index: 50;
     transition: transform var(--transition-base);
+    /* Safe area for notched devices */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow: hidden; /* Prevent sidebar container from scrolling */
+    box-sizing: border-box;
 }
 
 .sidebar-header {
@@ -852,7 +948,10 @@ a:hover {
 .sidebar-nav {
     flex: 1;
     padding: var(--space-4);
-    overflow-y: auto;
+    overflow-y: auto; /* Allow vertical scrolling in nav */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    min-height: 0; /* Important for flex scrolling */
 }
 
 .nav-section {
@@ -945,6 +1044,8 @@ a:hover {
     position: sticky;
     top: 0;
     z-index: 40;
+    /* Safe area for notched devices */
+    padding-top: calc(var(--space-4) + env(safe-area-inset-top));
 }
 
 .header-left {
@@ -1115,13 +1216,25 @@ a:hover {
 /* ===== Role Selector ===== */
 .role-selector {
     min-height: 100vh;
+    min-height: -webkit-fill-available; /* iOS Safari */
+    height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari */
     display: flex;
     align-items: center;
     justify-content: center;
     padding: var(--space-4);
     background: var(--gradient-dark);
     position: relative;
-    overflow: hidden;
+    overflow-y: auto; /* Allow scrolling if content is tall */
+    overflow-x: auto; /* Allow horizontal scroll if needed */
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100vw;
+    /* Safe area for notched devices */
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
 }
 
 .role-selector::before {
@@ -1138,6 +1251,7 @@ a:hover {
 .role-selector-card {
     width: 100%;
     max-width: 600px;
+    max-width: min(600px, calc(100vw - var(--space-8) - env(safe-area-inset-left) - env(safe-area-inset-right)));
     background: var(--bg-card);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border-color);
@@ -1145,6 +1259,9 @@ a:hover {
     padding: var(--space-10);
     position: relative;
     z-index: 1;
+    box-sizing: border-box;
+    overflow-y: auto; /* Allow scrolling if content is tall */
+    max-height: calc(100vh - var(--space-8) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 
 .role-grid {
@@ -1203,17 +1320,30 @@ a:hover {
     overflow: hidden;
     background: var(--bg-primary);
     position: relative;
+    width: 100%;
+    max-width: 100%; /* Ensure it doesn't overflow parent */
+    box-sizing: border-box;
 }
 
 .camera-video {
     width: 100%;
+    max-width: 100%;
+    height: auto;
     display: block;
     border-radius: var(--radius-lg);
+    object-fit: cover;
+    /* Better mobile video display */
+    transform: scaleX(-1); /* Mirror for selfie mode */
+    background: var(--bg-primary);
 }
 
 .camera-preview {
     width: 100%;
+    max-width: 100%;
+    height: auto;
     border-radius: var(--radius-lg);
+    object-fit: cover;
+    background: var(--bg-primary);
 }
 
 .camera-controls {
@@ -1311,12 +1441,18 @@ a:hover {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4);
+    width: 100%;
+    max-width: 100%; /* Ensure grid doesn't overflow parent */
+    box-sizing: border-box;
 }
 
 .grid-3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--space-4);
+    width: 100%;
+    max-width: 100%; /* Ensure grid doesn't overflow parent */
+    box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
@@ -1424,6 +1560,45 @@ a:hover {
     display: none;
 }
 
+/* ===== Scrollable Containers ===== */
+.scrollable {
+    overflow-y: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.scrollable-x {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.scrollable-y {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Max viewport constraints */
+.max-w-screen {
+    max-width: 100vw;
+}
+
+.max-h-screen {
+    max-height: 100vh;
+    max-height: -webkit-fill-available; /* iOS Safari */
+}
+
+/* Fit viewport */
+.fit-screen {
+    width: 100vw;
+    height: 100vh;
+    height: -webkit-fill-available; /* iOS Safari */
+    max-width: 100vw;
+    max-height: 100vh;
+    max-height: -webkit-fill-available; /* iOS Safari */
+}
+
 /* ===== Animations ===== */
 @keyframes fadeIn {
     from {
@@ -1521,10 +1696,42 @@ a:hover {
     }
 }
 
-/* ===== Responsive ===== */
+/* ===== Mobile-First Responsive Design ===== */
+
+/* Ensure minimum touch target sizes (44x44px) */
+button, 
+.btn,
+.nav-item,
+.dropdown-item,
+input[type="submit"],
+input[type="button"],
+input[type="checkbox"],
+input[type="radio"],
+a.btn {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(99, 102, 241, 0.2);
+}
+
+/* Prevent text size adjustment on iOS */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="search"],
+textarea,
+select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    -webkit-appearance: none;
+    appearance: none;
+}
+
 @media (max-width: 1024px) {
     .sidebar {
         transform: translateX(-100%);
+        width: 280px;
     }
 
     .sidebar.open {
@@ -1532,26 +1739,43 @@ a:hover {
         box-shadow: var(--shadow-xl);
     }
 
-    .sidebar.open~.sidebar-backdrop {
+    .sidebar-backdrop {
+        display: none;
+    }
+
+    .sidebar.open ~ .sidebar-backdrop {
         display: block;
     }
 
     .sidebar-close {
         display: flex;
+        min-width: 44px;
+        min-height: 44px;
     }
 
     .main-content {
         margin-left: 0;
+        width: 100%;
+        max-width: 100vw;
     }
 
     .menu-toggle {
         display: flex;
+        min-width: 44px;
+        min-height: 44px;
     }
 }
 
 @media (max-width: 768px) {
+    html {
+        font-size: 14px; /* Slightly smaller base font on mobile */
+    }
+
     .header {
         padding: var(--space-3) var(--space-4);
+        position: sticky;
+        top: 0;
+        z-index: 40;
     }
 
     .header-title {
@@ -1560,52 +1784,373 @@ a:hover {
 
     .header-user-info {
         display: none;
-        /* Hide name/role on mobile */
     }
 
     .header-user {
-        padding: var(--space-1);
-        border: none;
-        background: none;
+        padding: var(--space-2);
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .header-avatar {
+        width: 32px;
+        height: 32px;
     }
 
     .page-content {
         padding: var(--space-4);
+        overflow-x: auto; /* Allow horizontal scroll when needed */
+        overflow-y: auto; /* Allow vertical scroll */
+        -webkit-overflow-scrolling: touch;
     }
 
     .stats-grid {
         grid-template-columns: 1fr;
-    }
-
-    .auth-card {
-        padding: var(--space-6);
-    }
-
-    .modal {
-        margin: var(--space-4);
-        max-height: calc(100vh - var(--space-8));
+        gap: var(--space-4);
     }
 
     .stat-card {
         padding: var(--space-4);
     }
 
-    .btn-lg {
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .stat-value {
+        font-size: var(--font-size-2xl);
+    }
+
+    .auth-card {
+        padding: var(--space-6);
+        margin: var(--space-4);
+    }
+
+    .auth-logo {
+        margin-bottom: var(--space-6);
+    }
+
+    .modal {
+        margin: var(--space-4);
+        max-width: calc(100vw - var(--space-8) - env(safe-area-inset-left) - env(safe-area-inset-right));
+        max-height: calc(100vh - var(--space-8) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        border-radius: var(--radius-xl);
+        width: calc(100vw - var(--space-8));
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: var(--space-4);
+    }
+
+    .btn {
         padding: var(--space-3) var(--space-5);
+        font-size: var(--font-size-base);
+    }
+
+    .btn-lg {
+        padding: var(--space-4) var(--space-6);
+        font-size: var(--font-size-base);
+    }
+
+    .btn-sm {
+        padding: var(--space-2) var(--space-3);
         font-size: var(--font-size-sm);
+        min-height: 36px;
+    }
+
+    .btn-icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .btn-icon.btn-sm {
+        width: 40px;
+        height: 40px;
+    }
+
+    /* Form improvements for mobile */
+    .form-input,
+    .form-select,
+    .form-textarea {
+        padding: var(--space-4) var(--space-4);
+        font-size: 16px; /* Prevent iOS zoom */
+    }
+
+    .form-label {
+        font-size: var(--font-size-base);
+        margin-bottom: var(--space-3);
+    }
+
+    /* Card improvements */
+    .card {
+        padding: var(--space-4);
+        border-radius: var(--radius-lg);
+    }
+
+    .card-header {
+        margin-bottom: var(--space-4);
+        padding-bottom: var(--space-3);
+    }
+
+    .card-title {
+        font-size: var(--font-size-lg);
+    }
+
+    /* Table improvements - make scrollable on mobile */
+    .table-container {
+        -webkit-overflow-scrolling: touch;
+        overflow-x: auto; /* Horizontal scroll when table is wide */
+        overflow-y: auto; /* Vertical scroll when table is tall */
+        max-height: calc(100vh - 200px); /* Limit height to viewport */
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .table {
+        min-width: 600px; /* Force horizontal scroll if needed on mobile */
+        width: 100%;
+    }
+
+    .table th,
+    .table td {
+        padding: var(--space-3);
+        font-size: var(--font-size-sm);
+    }
+
+    /* Navigation improvements */
+    .nav-item {
+        padding: var(--space-4);
+        min-height: 48px;
+    }
+
+    /* Role selector improvements */
+    .role-selector-card {
+        padding: var(--space-6);
+        margin: var(--space-4);
+    }
+
+    .role-option {
+        padding: var(--space-4);
+        min-height: 60px;
+    }
+
+    .role-option-icon {
+        width: 48px;
+        height: 48px;
+    }
+
+    /* Camera improvements */
+    .camera-container {
+        border-radius: var(--radius-lg);
+        width: 100%;
+        max-width: 100%;
+        max-height: calc(100vh - 300px); /* Limit height to viewport */
+        overflow: hidden;
+    }
+
+    .camera-controls {
+        flex-wrap: wrap;
+        gap: var(--space-3);
+    }
+
+    .camera-controls .btn {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    /* Empty state improvements */
+    .empty-state {
+        padding: var(--space-8) var(--space-4);
+    }
+
+    .empty-state-icon {
+        width: 64px;
+        height: 64px;
+    }
+
+    /* Tabs improvements */
+    .tabs {
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
+    .tab {
+        min-height: 44px;
+        flex: 1 1 auto;
+        min-width: 100px;
+    }
+
+    /* Grid improvements */
+    .grid-2,
+    .grid-3 {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
     }
 }
 
 @media (max-width: 480px) {
+    html {
+        font-size: 14px;
+    }
+
+    .header {
+        padding: var(--space-2) var(--space-3);
+    }
+
+    .header-title {
+        font-size: var(--font-size-base);
+    }
+
     .header-left .badge {
         display: none;
-        /* Hide society name on very small screens */
+    }
+
+    .header-user {
+        padding: var(--space-1);
+    }
+
+    .header-right {
+        gap: var(--space-2);
+    }
+
+    .page-content {
+        padding: var(--space-3);
     }
 
     .stats-grid {
-        gap: var(--space-4);
+        gap: var(--space-3);
     }
 
+    .stat-card {
+        padding: var(--space-3);
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .stat-value {
+        font-size: var(--font-size-xl);
+    }
+
+    .auth-card {
+        padding: var(--space-5);
+        margin: var(--space-3);
+    }
+
+    .auth-title {
+        font-size: var(--font-size-xl);
+    }
+
+    .modal {
+        margin: var(--space-3);
+        max-width: calc(100vw - var(--space-6));
+        border-radius: var(--radius-lg);
+    }
+
+    .modal-title {
+        font-size: var(--font-size-lg);
+    }
+
+    .card {
+        padding: var(--space-3);
+    }
+
+    .btn {
+        padding: var(--space-3) var(--space-4);
+        font-size: var(--font-size-sm);
+    }
+
+    .btn-lg {
+        padding: var(--space-3) var(--space-5);
+    }
+
+    /* Table - stack on very small screens or make compact */
+    .table th,
+    .table td {
+        padding: var(--space-2);
+        font-size: var(--font-size-xs);
+    }
+
+    .table-actions {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .table-actions .btn {
+        width: 100%;
+    }
+
+    /* Form improvements */
+    .form-group {
+        margin-bottom: var(--space-4);
+    }
+
+    /* Camera - full width buttons on small screens */
+    .camera-controls {
+        flex-direction: column;
+    }
+
+    .camera-controls .btn {
+        width: 100%;
+        min-width: unset;
+    }
+
+    /* Role selector */
+    .role-selector-card {
+        padding: var(--space-5);
+        margin: var(--space-3);
+    }
+
+    .role-option {
+        padding: var(--space-3);
+    }
+
+    /* Badge sizing */
+    .badge {
+        padding: var(--space-1) var(--space-2);
+        font-size: 11px;
+    }
+}
+
+/* Landscape mobile orientation */
+@media (max-width: 768px) and (orientation: landscape) {
+    .auth-card {
+        max-height: calc(100vh - var(--space-8));
+        overflow-y: auto;
+    }
+
+    .modal {
+        max-width: calc(100vw - var(--space-6) - env(safe-area-inset-left) - env(safe-area-inset-right));
+        max-height: calc(100vh - var(--space-4) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        width: calc(100vw - var(--space-6));
+    }
+
+    .header {
+        padding: var(--space-2) var(--space-4);
+    }
+}
+
+/* Very small devices (iPhone SE, etc.) */
+@media (max-width: 375px) {
+    html {
+        font-size: 13px;
+    }
+
+    .page-content {
+        padding: var(--space-2);
+        overflow-x: auto; /* Allow horizontal scroll when needed */
+        overflow-y: auto; /* Allow vertical scroll */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .stats-grid {
+        gap: var(--space-2);
+    }
 }
 
 /* ===== Scrollbar ===== */
@@ -1625,6 +2170,21 @@ a:hover {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--gray-500);
+}
+
+/* Mobile scrollbar - thinner on mobile */
+@media (max-width: 768px) {
+    ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+}
+
+/* Smooth scrolling for better mobile experience */
+@media (prefers-reduced-motion: no-preference) {
+    * {
+        scroll-behavior: smooth;
+    }
 }
 
 /* ===== Print Styles ===== */

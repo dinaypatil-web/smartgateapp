@@ -249,4 +249,260 @@ export const generateId = () => {
 // Initialize storage on module load
 initializeStorage();
 
+// ===== Backup & Restore Functions =====
+
+/**
+ * Create a backup of all data
+ * @returns {Object} Backup data object with metadata
+ */
+export const createBackup = () => {
+    try {
+        const backup = {
+            version: '1.0.0',
+            timestamp: new Date().toISOString(),
+            data: {
+                users: getUsers(),
+                societies: getSocieties(),
+                visitors: getVisitors(),
+                notices: getNotices(),
+                preApprovals: getPreApprovals()
+            }
+        };
+        return backup;
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        throw new Error('Failed to create backup: ' + error.message);
+    }
+};
+
+/**
+ * Export backup to JSON file
+ * @param {Object} backup - Backup data object
+ * @param {string} filename - Optional filename (default: includes timestamp)
+ */
+export const exportBackupToFile = (backup = null, filename = null) => {
+    try {
+        const backupData = backup || createBackup();
+        
+        // Create filename with timestamp if not provided
+        if (!filename) {
+            const date = new Date();
+            const timestamp = date.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            filename = `sge-backup-${timestamp}.json`;
+        }
+
+        // Convert to JSON string
+        const jsonString = JSON.stringify(backupData, null, 2);
+        
+        // Create blob and download
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        return { success: true, filename };
+    } catch (error) {
+        console.error('Error exporting backup:', error);
+        throw new Error('Failed to export backup: ' + error.message);
+    }
+};
+
+/**
+ * Validate backup data structure
+ * @param {Object} backupData - Backup data to validate
+ * @returns {{valid: boolean, errors: string[]}}
+ */
+export const validateBackupData = (backupData) => {
+    const errors = [];
+
+    if (!backupData || typeof backupData !== 'object') {
+        errors.push('Invalid backup format: not an object');
+        return { valid: false, errors };
+    }
+
+    if (!backupData.data || typeof backupData.data !== 'object') {
+        errors.push('Invalid backup format: missing data object');
+        return { valid: false, errors };
+    }
+
+    const { data } = backupData;
+    const requiredKeys = ['users', 'societies', 'visitors', 'notices', 'preApprovals'];
+    
+    for (const key of requiredKeys) {
+        if (!(key in data)) {
+            errors.push(`Missing required data key: ${key}`);
+        } else if (!Array.isArray(data[key])) {
+            errors.push(`Invalid data format: ${key} should be an array`);
+        }
+    }
+
+    // Additional validation for critical data structures
+    if (Array.isArray(data.users)) {
+        data.users.forEach((user, index) => {
+            if (!user.id) errors.push(`User at index ${index} missing id`);
+            if (!user.roles || !Array.isArray(user.roles)) {
+                errors.push(`User at index ${index} missing roles array`);
+            }
+        });
+    }
+
+    if (Array.isArray(data.societies)) {
+        data.societies.forEach((society, index) => {
+            if (!society.id) errors.push(`Society at index ${index} missing id`);
+            if (!society.name) errors.push(`Society at index ${index} missing name`);
+        });
+    }
+
+    return {
+        valid: errors.length === 0,
+        errors
+    };
+};
+
+/**
+ * Restore data from backup
+ * @param {Object} backupData - Backup data to restore
+ * @param {boolean} createAutoBackup - Whether to create auto-backup before restore (default: true)
+ * @returns {{success: boolean, message: string, errors?: string[]}}
+ */
+export const restoreFromBackup = (backupData, createAutoBackup = true) => {
+    try {
+        // Validate backup data
+        const validation = validateBackupData(backupData);
+        if (!validation.valid) {
+            return {
+                success: false,
+                message: 'Backup data validation failed',
+                errors: validation.errors
+            };
+        }
+
+        // Create automatic backup before restore if requested
+        if (createAutoBackup) {
+            try {
+                const autoBackup = createBackup();
+                const autoBackupFilename = `sge-auto-backup-before-restore-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.json`;
+                const autoBackupJson = JSON.stringify(autoBackup, null, 2);
+                // Store in localStorage as a fallback
+                localStorage.setItem('sge_last_auto_backup', autoBackupJson);
+                localStorage.setItem('sge_last_auto_backup_time', new Date().toISOString());
+            } catch (backupError) {
+                console.warn('Failed to create auto-backup:', backupError);
+                // Continue with restore even if auto-backup fails
+            }
+        }
+
+        // Restore data
+        const { data } = backupData;
+        
+        // Clear existing data and restore
+        setUsers(data.users || []);
+        setSocieties(data.societies || []);
+        setVisitors(data.visitors || []);
+        setNotices(data.notices || []);
+        setPreApprovals(data.preApprovals || []);
+
+        return {
+            success: true,
+            message: 'Data restored successfully'
+        };
+    } catch (error) {
+        console.error('Error restoring backup:', error);
+        return {
+            success: false,
+            message: 'Failed to restore backup: ' + error.message
+        };
+    }
+};
+
+/**
+ * Import backup from file
+ * @param {File} file - File object to import
+ * @returns {Promise<{success: boolean, backup?: Object, message?: string, errors?: string[]}>}
+ */
+export const importBackupFromFile = async (file) => {
+    return new Promise((resolve) => {
+        try {
+            if (!file) {
+                resolve({ success: false, message: 'No file provided' });
+                return;
+            }
+
+            if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+                resolve({ success: false, message: 'Invalid file type. Please select a JSON file.' });
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    const validation = validateBackupData(backupData);
+                    
+                    if (!validation.valid) {
+                        resolve({
+                            success: false,
+                            message: 'Invalid backup file format',
+                            errors: validation.errors
+                        });
+                        return;
+                    }
+
+                    resolve({
+                        success: true,
+                        backup: backupData
+                    });
+                } catch (parseError) {
+                    resolve({
+                        success: false,
+                        message: 'Failed to parse JSON file: ' + parseError.message
+                    });
+                }
+            };
+
+            reader.onerror = () => {
+                resolve({
+                    success: false,
+                    message: 'Failed to read file'
+                });
+            };
+
+            reader.readAsText(file);
+        } catch (error) {
+            resolve({
+                success: false,
+                message: 'Error importing file: ' + error.message
+            });
+        }
+    });
+};
+
+/**
+ * Get auto-backup from localStorage if available
+ * @returns {Object|null}
+ */
+export const getAutoBackup = () => {
+    try {
+        const autoBackupJson = localStorage.getItem('sge_last_auto_backup');
+        const autoBackupTime = localStorage.getItem('sge_last_auto_backup_time');
+        
+        if (autoBackupJson) {
+            return {
+                data: JSON.parse(autoBackupJson),
+                timestamp: autoBackupTime
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Error getting auto-backup:', error);
+        return null;
+    }
+};
+
 export { STORAGE_KEYS };

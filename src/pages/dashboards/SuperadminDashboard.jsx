@@ -10,9 +10,11 @@ import EmptyState from '../../components/EmptyState';
 import {
     LayoutDashboard, Building2, Users, UserCheck,
     Plus, Edit, Trash2, Calendar, MapPin, LogOut,
-    Shield, Check, X
+    Shield, Check, X, Database, Download, Upload,
+    AlertTriangle, CheckCircle
 } from 'lucide-react';
 import { formatDate, getRoleLabel } from '../../utils/validators';
+import * as storageUtils from '../../utils/storage';
 
 const sidebarItems = [
     {
@@ -21,7 +23,8 @@ const sidebarItems = [
             { path: '', label: 'Dashboard', icon: LayoutDashboard },
             { path: '/societies', label: 'Societies', icon: Building2 },
             { path: '/administrators', label: 'Administrators', icon: Users },
-            { path: '/my-roles', label: 'My Roles', icon: UserCheck }
+            { path: '/my-roles', label: 'My Roles', icon: UserCheck },
+            { path: '/backup', label: 'Backup & Restore', icon: Database }
         ]
     }
 ];
@@ -87,13 +90,15 @@ const DashboardHome = () => {
                 <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-6)' }}>
                     As the superadmin, you have full control over all societies and administrators.
                 </p>
-                <button
-                    className="btn btn-danger"
-                    onClick={() => setShowResignModal(true)}
-                >
-                    <LogOut size={18} />
-                    Resign as Superadmin
-                </button>
+                <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                    <button
+                        className="btn btn-danger"
+                        onClick={() => setShowResignModal(true)}
+                    >
+                        <LogOut size={18} />
+                        Resign as Superadmin
+                    </button>
+                </div>
             </div>
 
             <ConfirmModal
@@ -598,6 +603,251 @@ const MyRolesPage = () => {
     );
 };
 
+// Data Backup & Restore Page
+const DataBackupPage = () => {
+    const { refreshData } = useData();
+    const [backupStatus, setBackupStatus] = useState({ type: '', message: '', errors: [] });
+    const [restoreConfirm, setRestoreConfirm] = useState(null);
+    const [backupFile, setBackupFile] = useState(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const handleBackup = () => {
+        try {
+            const backup = storageUtils.createBackup();
+            storageUtils.exportBackupToFile(backup);
+            setBackupStatus({
+                type: 'success',
+                message: 'Backup created and downloaded successfully!'
+            });
+        } catch (error) {
+            setBackupStatus({
+                type: 'error',
+                message: 'Failed to create backup: ' + error.message
+            });
+        }
+    };
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setBackupFile(null);
+        setBackupStatus({ type: '', message: '', errors: [] });
+        setIsProcessing(true);
+
+        try {
+            const result = await storageUtils.importBackupFromFile(file);
+            if (result.success) {
+                setBackupFile(result.backup);
+                setBackupStatus({
+                    type: 'success',
+                    message: 'Backup file loaded successfully. Click "Restore" to proceed.'
+                });
+            } else {
+                setBackupStatus({
+                    type: 'error',
+                    message: result.message,
+                    errors: result.errors || []
+                });
+            }
+        } catch (error) {
+            setBackupStatus({
+                type: 'error',
+                message: 'Error processing file: ' + error.message
+            });
+        } finally {
+            setIsProcessing(false);
+            // Reset file input
+            e.target.value = '';
+        }
+    };
+
+    const handleRestore = () => {
+        if (!backupFile) {
+            setBackupStatus({
+                type: 'error',
+                message: 'Please select a backup file first'
+            });
+            return;
+        }
+
+        // Show confirmation dialog
+        setRestoreConfirm(backupFile);
+    };
+
+    const confirmRestore = () => {
+        setIsProcessing(true);
+        try {
+            const result = storageUtils.restoreFromBackup(restoreConfirm, true);
+            
+            if (result.success) {
+                setBackupStatus({
+                    type: 'success',
+                    message: 'Data restored successfully! The page will refresh to show updated data.'
+                });
+                // Refresh data in context
+                refreshData();
+                // Reset states
+                setBackupFile(null);
+                setRestoreConfirm(null);
+                // Reload page after a short delay to ensure all data is refreshed
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                setBackupStatus({
+                    type: 'error',
+                    message: result.message,
+                    errors: result.errors || []
+                });
+                setRestoreConfirm(null);
+            }
+        } catch (error) {
+            setBackupStatus({
+                type: 'error',
+                message: 'Failed to restore backup: ' + error.message
+            });
+            setRestoreConfirm(null);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    return (
+        <div>
+            <h2 className="mb-6">Data Backup & Restore</h2>
+
+            <div className="alert alert-info mb-6">
+                <AlertTriangle size={18} />
+                <div>
+                    <strong>Important:</strong> Always create a backup before making changes or restoring data. 
+                    An automatic backup will be created before any restore operation.
+                </div>
+            </div>
+
+            {/* Backup Section */}
+            <div className="card mb-6">
+                <div className="card-header">
+                    <h3 className="card-title">
+                        <Download size={20} />
+                        Create Backup
+                    </h3>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>
+                    Download a complete backup of all your data (users, societies, visitors, notices, and pre-approvals).
+                    The backup file can be used to restore your data later.
+                </p>
+                <button
+                    className="btn btn-primary"
+                    onClick={handleBackup}
+                    disabled={isProcessing}
+                >
+                    <Database size={18} />
+                    Create & Download Backup
+                </button>
+            </div>
+
+            {/* Restore Section */}
+            <div className="card">
+                <div className="card-header">
+                    <h3 className="card-title">
+                        <Upload size={20} />
+                        Restore from Backup
+                    </h3>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>
+                    Restore your data from a previously created backup file. All current data will be replaced with the backup data.
+                    A backup of your current data will be created automatically before restoration.
+                </p>
+
+                <div className="form-group">
+                    <label className="form-label">Select Backup File</label>
+                    <input
+                        type="file"
+                        accept=".json,application/json"
+                        onChange={handleFileSelect}
+                        disabled={isProcessing}
+                        className="form-input"
+                        style={{ padding: 'var(--space-3)' }}
+                    />
+                    <div className="form-hint">
+                        Select a JSON backup file created by this system
+                    </div>
+                </div>
+
+                {backupFile && (
+                    <div className="alert alert-success mb-4">
+                        <CheckCircle size={18} />
+                        <div>
+                            <strong>Backup file loaded:</strong> Created on{' '}
+                            {backupFile.timestamp ? new Date(backupFile.timestamp).toLocaleString() : 'Unknown date'}
+                            {backupFile.version && ` (Version: ${backupFile.version})`}
+                        </div>
+                    </div>
+                )}
+
+                {backupStatus.message && (
+                    <div className={`alert ${backupStatus.type === 'success' ? 'alert-success' : 'alert-error'} mb-4`}>
+                        {backupStatus.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+                        <div>
+                            <div>{backupStatus.message}</div>
+                            {backupStatus.errors && backupStatus.errors.length > 0 && (
+                                <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 'var(--space-5)' }}>
+                                    {backupStatus.errors.map((error, index) => (
+                                        <li key={index}>{error}</li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                <button
+                    className="btn btn-warning"
+                    onClick={handleRestore}
+                    disabled={!backupFile || isProcessing}
+                >
+                    <Upload size={18} />
+                    Restore Data
+                </button>
+            </div>
+
+            {/* Restore Confirmation Modal */}
+            <ConfirmModal
+                isOpen={!!restoreConfirm}
+                onClose={() => setRestoreConfirm(null)}
+                onConfirm={confirmRestore}
+                title="Confirm Data Restore"
+                message={
+                    <div>
+                        <p style={{ marginBottom: 'var(--space-4)' }}>
+                            Are you sure you want to restore data from this backup? 
+                            This will replace ALL current data with the backup data.
+                        </p>
+                        {restoreConfirm && (
+                            <div style={{ 
+                                background: 'var(--bg-glass)', 
+                                padding: 'var(--space-3)', 
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: 'var(--font-size-sm)'
+                            }}>
+                                <strong>Backup Details:</strong><br />
+                                Date: {restoreConfirm.timestamp ? new Date(restoreConfirm.timestamp).toLocaleString() : 'Unknown'}<br />
+                                {restoreConfirm.version && `Version: ${restoreConfirm.version}`}
+                            </div>
+                        )}
+                        <p style={{ marginTop: 'var(--space-4)', color: 'var(--warning-500)' }}>
+                            <strong>Note:</strong> An automatic backup of your current data will be created before restoration.
+                        </p>
+                    </div>
+                }
+                confirmText="Yes, Restore Data"
+                variant="warning"
+            />
+        </div>
+    );
+};
+
 // Main Dashboard Layout
 const SuperadminDashboard = () => {
     return (
@@ -611,6 +861,7 @@ const SuperadminDashboard = () => {
                         <Route path="/societies" element={<SocietiesPage />} />
                         <Route path="/administrators" element={<AdministratorsPage />} />
                         <Route path="/my-roles" element={<MyRolesPage />} />
+                        <Route path="/backup" element={<DataBackupPage />} />
                     </Routes>
                 </div>
             </div>
